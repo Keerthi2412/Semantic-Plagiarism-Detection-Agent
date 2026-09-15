@@ -1,1 +1,588 @@
+<!DOCTYPE html>
 
+<html>
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Semantic Plagiarism Detector
+    </title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <!-- HEADER -->
+
+    <header>
+
+        <div class="badge">
+            AI-POWERED
+        </div>
+
+        <h1>
+            Semantic Plagiarism Detector
+        </h1>
+
+        <p>
+            Detect copied meaning, even when the wording is changed.
+        </p>
+
+    </header>
+
+
+
+    <!-- UPLOAD SECTION -->
+
+    <section class="upload-section">
+
+
+        <!-- SUBMITTED DOCUMENT -->
+
+        <div class="upload-card">
+
+            <div class="icon">
+                📄
+            </div>
+
+            <h2>
+                Submitted Document
+            </h2>
+
+            <p>
+
+                Upload the student's or
+                AI-generated document.
+
+            </p>
+
+            <input
+                type="file"
+                id="submitted"
+                accept=".pdf,.docx,.txt"
+            >
+
+            <div id="submitted-name"
+                 class="file-name">
+
+                No file selected
+
+            </div>
+
+        </div>
+
+
+
+        <!-- REFERENCE DOCUMENT -->
+
+        <div class="upload-card">
+
+            <div class="icon">
+                📚
+            </div>
+
+            <h2>
+                Reference Document
+            </h2>
+
+            <p>
+
+                Upload the original or
+                source document.
+
+            </p>
+
+            <input
+                type="file"
+                id="reference"
+                accept=".pdf,.docx,.txt"
+            >
+
+            <div id="reference-name"
+                 class="file-name">
+
+                No file selected
+
+            </div>
+
+        </div>
+
+
+    </section>
+
+
+
+    <!-- ANALYZE BUTTON -->
+
+    <button
+        class="analyze-button"
+        onclick="analyzeDocuments()">
+
+        🔍 Analyze Documents
+
+    </button>
+
+
+
+    <!-- LOADING -->
+
+    <div id="loading"
+         class="loading">
+
+        <div class="spinner"></div>
+
+        <p>
+            Analyzing semantic similarity...
+        </p>
+
+        <small>
+            Generating embeddings and comparing sections
+        </small>
+
+    </div>
+
+
+
+    <!-- RESULTS -->
+
+    <div id="result"></div>
+
+
+</div>
+
+
+
+<script>
+
+
+// -----------------------------
+// DISPLAY SELECTED FILE NAME
+// -----------------------------
+
+document.getElementById("submitted")
+.addEventListener("change", function() {
+
+    const name =
+        this.files.length
+        ? this.files[0].name
+        : "No file selected";
+
+    document.getElementById(
+        "submitted-name"
+    ).textContent = name;
+
+});
+
+
+document.getElementById("reference")
+.addEventListener("change", function() {
+
+    const name =
+        this.files.length
+        ? this.files[0].name
+        : "No file selected";
+
+    document.getElementById(
+        "reference-name"
+    ).textContent = name;
+
+});
+
+
+
+// -----------------------------
+// ANALYZE DOCUMENTS
+// -----------------------------
+
+async function analyzeDocuments() {
+
+
+    const submitted =
+        document.getElementById(
+            "submitted"
+        ).files[0];
+
+
+    const reference =
+        document.getElementById(
+            "reference"
+        ).files[0];
+
+
+    if (!submitted || !reference) {
+
+        alert(
+            "Please upload both documents."
+        );
+
+        return;
+
+    }
+
+
+    // Create form data
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "submitted",
+        submitted
+    );
+
+
+    formData.append(
+        "reference",
+        reference
+    );
+
+
+    // Show loading
+
+    document.getElementById(
+        "loading"
+    ).style.display = "block";
+
+
+    document.getElementById(
+        "result"
+    ).innerHTML = "";
+
+
+    try {
+
+
+        // Send documents to Flask
+
+        const response =
+            await fetch(
+                "/analyze",
+                {
+
+                    method: "POST",
+
+                    body: formData
+
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        // Hide loading
+
+        document.getElementById(
+            "loading"
+        ).style.display = "none";
+
+
+        // Error
+
+        if (data.error) {
+
+            document.getElementById(
+                "result"
+            ).innerHTML = `
+
+                <div class="error">
+
+                    ⚠️ ${data.error}
+
+                </div>
+
+            `;
+
+            return;
+
+        }
+
+
+        // Risk class
+
+        let riskClass =
+            data.risk.toLowerCase();
+
+
+        // Results HTML
+
+        let html = `
+
+
+        <!-- SCORE -->
+
+        <div class="result-header">
+
+            <h2>
+                Plagiarism Analysis Report
+            </h2>
+
+            <p>
+                Semantic comparison completed
+            </p>
+
+        </div>
+
+
+
+        <div class="score-grid">
+
+
+            <div class="score-card">
+
+                <span>
+                    Overall Semantic Similarity
+                </span>
+
+                <strong>
+                    ${data.overall_similarity}%
+                </strong>
+
+            </div>
+
+
+            <div class="score-card">
+
+                <span>
+                    Plagiarism Risk
+                </span>
+
+                <strong class="${riskClass}">
+                    ${data.risk}
+                </strong>
+
+            </div>
+
+
+            <div class="score-card">
+
+                <span>
+                    Submitted Sections
+                </span>
+
+                <strong>
+                    ${data.submitted_sections}
+                </strong>
+
+            </div>
+
+
+            <div class="score-card">
+
+                <span>
+                    Matching Sections
+                </span>
+
+                <strong>
+                    ${data.matches.length}
+                </strong>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- MATCHES -->
+
+        <h2 class="section-title">
+
+            🔗 Matching Sections
+
+        </h2>
+
+        `;
+
+
+        if (data.matches.length === 0) {
+
+
+            html += `
+
+                <div class="no-match">
+
+                    <h3>
+                        ✅ No significant matches detected
+                    </h3>
+
+                    <p>
+                        No sections exceeded the
+                        semantic similarity threshold.
+                    </p>
+
+                </div>
+
+            `;
+
+
+        }
+
+
+        else {
+
+
+            data.matches.forEach(
+                function(match) {
+
+
+                    html += `
+
+                    <div class="match-card">
+
+
+                        <div class="match-header">
+
+                            <h3>
+
+                                Submitted Section
+                                ${match.submitted_section}
+
+                                ↔
+
+                                Reference Section
+                                ${match.reference_section}
+
+                            </h3>
+
+
+                            <span class="match-percentage">
+
+                                ${match.similarity}%
+
+                            </span>
+
+                        </div>
+
+
+
+                        <div class="comparison">
+
+
+                            <div class="text-box">
+
+                                <h4>
+                                    Submitted Content
+                                </h4>
+
+                                <p>
+                                    ${match.submitted_text}
+                                </p>
+
+                            </div>
+
+
+
+                            <div class="text-box">
+
+                                <h4>
+                                    Reference Content
+                                </h4>
+
+                                <p>
+                                    ${match.reference_text}
+                                </p>
+
+                            </div>
+
+
+                        </div>
+
+
+                    </div>
+
+                    `;
+
+                }
+            );
+
+        }
+
+
+
+        // Final explanation
+
+        html += `
+
+            <div class="explanation">
+
+                <h3>
+                    🧠 How the result was calculated
+                </h3>
+
+                <p>
+
+                    The system converts document sections
+                    into semantic embeddings using a
+                    pre-trained Sentence Transformer model.
+                    Cosine similarity is then used to compare
+                    the meaning of the sections rather than
+                    relying only on exact word matches.
+
+                </p>
+
+            </div>
+
+        `;
+
+
+        document.getElementById(
+            "result"
+        ).innerHTML = html;
+
+
+    }
+
+
+    catch (error) {
+
+
+        document.getElementById(
+            "loading"
+        ).style.display = "none";
+
+
+        document.getElementById(
+            "result"
+        ).innerHTML = `
+
+            <div class="error">
+
+                ❌ Something went wrong.
+
+                <br><br>
+
+                Please check the terminal for details.
+
+            </div>
+
+        `;
+
+        console.error(error);
+
+    }
+
+}
+
+
+</script>
+
+
+</body>
+
+</html>
